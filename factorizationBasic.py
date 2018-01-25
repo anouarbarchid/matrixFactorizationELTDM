@@ -5,14 +5,23 @@ Created on Thu Jan 25 13:23:03 2018
 @author: Dell
 """
 
-
+import csv
 import random
 import numpy as np
 from random import randint
 
 
+reader = csv.reader(open("R.csv", "r"), delimiter=",")
+x = list(reader)
+result = np.array(x).astype("float")
+R = np.matrix(result)
+
+n = R.shape[0]
+m = R.shape[1]      
+k = 100 
 
 def solve_iter( R, P, Q, u, v):
+
     alpha = 0.05
     lp = 0.05
     lq = 0.05
@@ -29,9 +38,9 @@ def solve_iter( R, P, Q, u, v):
     
     P_new = P
     Q_new = Q
-    for i in range(0,n):
+    for i in range(0,k):
         Q_new[i,v] = Qv[i]
-    for j in range(0,m):
+    for j in range(0,k):
         P_new[u,j] = Pu[j]
 
     return P_new, Q_new
@@ -39,19 +48,16 @@ def solve_iter( R, P, Q, u, v):
 
 
 #[[1,6,4,4],[11,2,3,4],[0,10,6,5],[9,-3,15,7]]
-R = np.matrix([[1,6,5.9,4],[11.5,1,2.2,1],[7,5,7,1],[-1,5,11,8]])
-n = R.shape[0]
-m = R.shape[1]      
-k = 4 
+#R = np.matrix([[1,6,5.9,4],[11.5,1,2.2,1],[7,5,7,1],[-1,5,11,8]])
 
 P = np.zeros(shape=(n,k))
 Q = np.zeros(shape=(k,m))
-P = np.matrix(np.random.random((4, 4)))
-Q = np.matrix(np.random.random((4, 4)))
+P = np.matrix(np.random.random((n, k)))
+Q = np.matrix(np.random.random((k, m)))
 
 
-for t in range(0,10000):
-    if t%1000 == 0 :
+for t in range(0,5000):
+    if t%100 == 0 :
         print(t)
     u = randint(0, n-1)
     v = randint(0, m-1)

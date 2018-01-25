@@ -14,6 +14,13 @@ import numpy as np
 from random import randint
 
 
+sc = SparkContext.getOrCreate()
+#[[1,6,4,4],[11,2,3,4],[0,10,6,5],[9,-3,15,7]]
+R = np.matrix([[1,6,5.9,4],[11.5,1,2.2,1],[7,5,7,1],[-1,5,11,8]])
+n = R.shape[0]
+m = R.shape[1]      
+k = 4 
+
 
 def wave_move(mat):
     n = mat.shape[0]
@@ -46,7 +53,7 @@ def blocs_decomposition(mat,u,v):
            
 
 def solve_iter( R, P, Q, u, v):
-    
+
     alpha = 0.05
     lp = 0.01
     lq = 0.01
@@ -62,9 +69,9 @@ def solve_iter( R, P, Q, u, v):
     
     P_new = P
     Q_new = Q
-    for i in range(0,n):
+    for i in range(0,k):
         Q_new[i,v] = Qv[i]
-    for j in range(0,m):
+    for j in range(0,k):
         P_new[u,j] = Pu[j]
 
     return P_new, Q_new
@@ -110,13 +117,6 @@ def complete_matrix_Q( Q, m, c):
             Q_new[i,j] = Q[i,j-c]
     return Q_new
 
-
-sc = SparkContext.getOrCreate()
-#[[1,6,4,4],[11,2,3,4],[0,10,6,5],[9,-3,15,7]]
-R = np.matrix([[1,6,5.9,4],[11.5,1,2.2,1],[7,5,7,1],[-1,5,11,8]])
-n = R.shape[0]
-m = R.shape[1]      
-k = 4 
 
 
 P = np.zeros(shape=(n,k))
