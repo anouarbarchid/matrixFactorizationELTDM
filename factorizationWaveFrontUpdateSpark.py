@@ -16,10 +16,39 @@ from random import randint
 
 sc = SparkContext.getOrCreate()
 #[[1,6,4,4],[11,2,3,4],[0,10,6,5],[9,-3,15,7]]
-R = np.matrix([[1,6,5.9,4],[11.5,1,2.2,1],[7,5,7,1],[-1,5,11,8]])
+#R = np.matrix([[1,6,5.9,4],[11.5,1,2.2,1],[7,5,7,1],[-1,5,11,8]])
+#R = np.matrix([[1,1,5,1],[1,1,1,8],[12,1,1,1],[1,0,1,1]])
+P = np.matrix([[0.1,0.2,0.3,0.4],[0.5,0.6,0.7,0.8],[0.9,1.0,1.1,1.2],[1.3,1.4,1.5,1.6]])
+Q = np.matrix([[0,5,3,1],[1,0.1,0.1,0.1],[3,1,1.5,0.2],[0.4,0,1.5,1]])
+
+
+reader = csv.reader(open("R.csv", "r"), delimiter=",")
+x = list(reader)
+result = np.array(x).astype("float")
+R = np.matrix(result)
+
 n = R.shape[0]
 m = R.shape[1]      
-k = 4 
+k = 8
+P = np.zeros(shape=(n,k))
+Q = np.zeros(shape=(k,m))
+P = np.matrix(np.random.random((n, k)))
+Q = np.matrix(np.random.random((k, m)))
+#P = np.matrix([[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1]])
+#Q = np.matrix([[2,2,2,2],[2,2,2,2],[2,2,2,2],[2,2,2,2]])
+
+#P = np.matrix([[0.4,0.1,0.6,0.4],[0,0,0,1.8],[0.9,1.0,1.1,1.2],[1.3,0,1.5,1.6]])
+#Q = np.matrix([[0,5,0,0],[0.6,0.1,0,0.1],[1,1,2.5,0.2],[1.4,0.5,1.5,1.5]])
+
+"""
+for i in range(0,n):
+    for j in range(0,k):
+        P[i,j] = np.random.uniform(-1,1)
+        
+for i in range(0,k):
+    for j in range(0,m):
+        Q[i,j] = np.random.uniform(-1,1)
+"""               
 
 
 def wave_move(mat):
@@ -54,9 +83,9 @@ def blocs_decomposition(mat,u,v):
 
 def solve_iter( R, P, Q, u, v):
 
-    alpha = 0.05
-    lp = 0.01
-    lq = 0.01
+    alpha = 0.005
+    lp = 0.001
+    lq = 0.001
     n = R.shape[0]
     m = R.shape[1]      
     err = R[u,v] - np.dot(P[u,:],Q[:,v])
@@ -76,12 +105,18 @@ def solve_iter( R, P, Q, u, v):
 
     return P_new, Q_new
 
-def solve_iter_bis( R, P, Q, u, v, r, c, n, m):        
-    P, Q = solve_iter( R, P, Q, u, v)
-    P_new = complete_matrix_P(P, n, r)
-    Q_new = complete_matrix_Q(Q, m, c)
-    return [P_new,Q_new]
+def solve_iter_bis( R, P, Q, u, v, r, c, n, m):    
+    P_new = P
+    Q_new = Q
+    for i in range(0,10000):
+        u = randint(0,1)
+        v = randint(0,1)
+        P_new, Q_new = solve_iter( R, P_new , Q_new, u, v)
 
+    P_new = complete_matrix_P(P_new, n, r)
+    Q_new = complete_matrix_Q(Q_new, m, c)
+
+    return [('P', P_new) , ('Q', Q_new)]
 
 def id_matrix(n,m):
     mat = np.zeros(shape=(n,m))
@@ -118,17 +153,28 @@ def complete_matrix_Q( Q, m, c):
     return Q_new
 
 
+def distance( U , V ):
+    n = U.shape[0]
+    m = U.shape[1]
+    dist = 0      
+    for i in range(0,n):   
+        for j in range(0,m):
+            dist = dist + abs(U[i,j] - V[i,j])
+    return dist
+    
 
-P = np.zeros(shape=(n,k))
-Q = np.zeros(shape=(k,m))
-P = np.matrix(np.random.random((4, 4)))
-Q = np.matrix(np.random.random((4, 4)))
+
 
 u = 2
 v = 2
 wave_matrix = id_matrix(u,v)
 for t in range(0,100):
     print(t)
+
+    R_approx = P.dot(Q)
+    print("distance = ")
+    d = distance(R_approx, R)
+    print(d)
     
     blocs = blocs_decomposition(R,u,v)
     k = 0
@@ -144,16 +190,31 @@ for t in range(0,100):
                 
                 k = k + 1
     
-    print(wave_blocs)
+    #print(' -----------  wave_blocs  ------------- ')
+    #print(wave_blocs)
     data = sc.parallelize(wave_blocs)
-    result = data.map(lambda x: solve_iter_bis(x[0],x[1],x[2],randint(0, int(n/u)-1),randint(0, int(m/v)-1), x[3], x[4], n, m)) \
-            .reduce(lambda a, b: [a[0]+b[0],a[1]+b[1]])        
+    result_map      = data.flatMap(lambda x: solve_iter_bis(x[0],x[1],x[2],randint(0, int(n/u)-1),randint(0, int(m/v)-1), x[3], x[4], n, m)) 
+    result_reduce   = result_map.reduceByKey(lambda a,b: a+b)        
     
+    P = result_reduce.collect()[1][1]
+    Q = result_reduce.collect()[0][1]
+    """
+    print(result_reduce.collect())
+    print(' ******* P and Q')
+    print(P)
+    print(Q)
+    
+    print('P*Q')
+    print(R_approx)
+    print('R')
+    
+    print(R)
+    """
     
     wave_matrix = wave_move(wave_matrix)
     
-#print(P)
-#print(Q)
+print(P)
+print(Q)
 
 R_approx = P*Q
 
